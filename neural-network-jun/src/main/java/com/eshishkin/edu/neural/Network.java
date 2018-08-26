@@ -52,12 +52,12 @@ public class Network {
     }
 
     public void SGD(EducationPlan plan) {
-        int batch = 1;
+        int batch = 4;
         double kk = plan.getEducationRate() / batch;
 
         for (int i = 0; i < plan.getEpochs(); i++) {
             LayerGradientHolder gradients = LayerGradientHolder.fromSum(
-                    plan.forEachTrainingEntry(this::grad)
+                    plan.forFirstRandomTrainingEntries(batch, this::grad)
             );
 
             for (int k = 0; k < layers; k++) {
@@ -128,11 +128,6 @@ public class Network {
     private Vector costDerivative(Vector activated, Vector expected) {
         return activated.add(expected.multiply(-1));
     }
-
-//        ToDo ES: implement
-//    private List<Pair<Vector, Vector>> takeRandom(List<Pair<Vector, Vector>> data, int batch) {
-//        return data;
-//    }
 
     private double sigmoid(double z) {
         return 1 / (1 + Math.exp(-z));

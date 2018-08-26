@@ -1,6 +1,7 @@
 package com.eshishkin.edu.neural;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
@@ -31,6 +32,21 @@ public class EducationPlan {
 
     public double getEducationRate() {
         return educationRate;
+    }
+
+    public <T> List<T> forFirstRandomTrainingEntries(int batch, BiFunction<Vector, Vector, T> consumer) {
+        if (batch > trainingSet.size()) {
+            throw new RuntimeException("Batch size is more than data set size:" + batch);
+        }
+
+        List<Pair<Vector, Vector>> data = new ArrayList<>(trainingSet);
+        Collections.shuffle(data);
+
+        return data
+                .stream()
+                .limit(batch)
+                .map(p -> consumer.apply(p.getLeft(), p.getRight()))
+                .collect(Collectors.toList());
     }
 
     public <T> List<T> forEachTrainingEntry(BiFunction<Vector, Vector, T> consumer) {
