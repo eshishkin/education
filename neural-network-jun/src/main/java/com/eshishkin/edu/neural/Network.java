@@ -35,13 +35,8 @@ public class Network {
         Vector result = data;
 
         for (int i = 0; i < layers; i++) {
-            result = weights
-                    .get(i)
-                    .multiply(result)
-                    .add(bias.get(i))
-                    .transform((index, value) -> sigmoid(value));
+            result = calculateWeighedSumForLayer(i, result).transform((index, value) -> sigmoid(value));
         }
-
         return result;
     }
 
@@ -50,6 +45,9 @@ public class Network {
     }
 
     public void educate(EducationPlan plan) {
+        if (layers < 2) {
+            throw new RuntimeException("Too less layers in the network. Cannot use back propagation");
+        }
         SGD(plan);
     }
 
@@ -58,7 +56,6 @@ public class Network {
         double kk = plan.getEducationRate() / batch;
 
         for (int i = 0; i < plan.getEpochs(); i++) {
-
             LayerGradientHolder gradients = LayerGradientHolder.fromSum(
                     plan.forEachTrainingEntry(this::grad)
             );
@@ -74,22 +71,18 @@ public class Network {
     }
 
     private LayerGradientHolder grad(Vector initial, Vector expected) {
+
         List<Vector> w_sums = new ArrayList<>();
         List<Vector> activations = new ArrayList<>();
 
         Vector w_sum = null;
-
         Vector activation = initial;
+
         activations.add(activation);
 
         for (int i = 0; i < layers; i++) {
-            w_sum = weights
-                    .get(i)
-                    .multiply(activation)
-                    .add(bias.get(i));
-
+            w_sum = calculateWeighedSumForLayer(i, activation);
             activation = w_sum.transform((index, value) -> sigmoid(value));
-
             w_sums.add(w_sum);
             activations.add(activation);
         }
@@ -101,10 +94,8 @@ public class Network {
 
         LayerGradientHolder holder = new LayerGradientHolder();
 
-        Vector nabla_b = delta;
-        Matrix nabla_w = delta.toColumnMatrix().multiply(activations.get(layers - 1).toRowMatrix());
+        holder.addToHead(nabla_w(delta, activations.get(layers - 1)), nabla_b(delta));
 
-        holder.addToHead(nabla_w, nabla_b);
         for (int i = layers - 1; i > 0; i--) {
             Vector z = w_sums.get(i - 1);
 
@@ -113,13 +104,25 @@ public class Network {
                     .multiply(delta)
                     .hadamardProduct(z.transform((k, v) -> sigmoidDerivative(v)));
 
-            nabla_b = delta;
-
-            nabla_w = delta.toColumnMatrix().multiply(activations.get(i - 1).toRowMatrix());
-            holder.addToHead(nabla_w, nabla_b);
+            holder.addToHead(
+                    nabla_w(delta, activations.get(i - 1)),
+                    nabla_b(delta)
+            );
         }
 
         return holder;
+    }
+
+    private Vector nabla_b(Vector delta) {
+        return delta;
+    }
+
+    private Matrix nabla_w(Vector delta, Vector activation) {
+        return delta.toColumnMatrix().multiply(activation.toRowMatrix());
+    }
+
+    private Vector calculateWeighedSumForLayer(int layer, Vector input) {
+        return weights.get(layer).multiply(input).add(bias.get(layer));
     }
 
     private Vector costDerivative(Vector activated, Vector expected) {
