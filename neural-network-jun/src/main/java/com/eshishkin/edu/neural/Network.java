@@ -17,6 +17,8 @@ public class Network {
     private List<Matrix> weights;
     private List<Vector> bias;
 
+    private LossFunction lossFunction = new LossFunction.QuadricLossFunction();
+
     public Network(List<Integer> sizes) {
         this.layers = sizes.size() - 1;
         this.sizes = sizes;
@@ -89,7 +91,7 @@ public class Network {
 
         Vector delta = w_sum
                 .transform((i, v) -> sigmoidDerivative(v))
-                .hadamardProduct(costDerivative(activation, expected));
+                .hadamardProduct(lossFunction.derivative(activation, expected));
 
 
         LayerGradientHolder holder = new LayerGradientHolder();
@@ -123,10 +125,6 @@ public class Network {
 
     private Vector calculateWeighedSumForLayer(int layer, Vector input) {
         return weights.get(layer).multiply(input).add(bias.get(layer));
-    }
-
-    private Vector costDerivative(Vector activated, Vector expected) {
-        return activated.add(expected.multiply(-1));
     }
 
     private double sigmoid(double z) {
